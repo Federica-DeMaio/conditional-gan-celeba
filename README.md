@@ -1,51 +1,55 @@
 # Conditional GAN for Face Generation (CelebA) 🎭🤖
 
-Questo repository contiene lo sviluppo di un modello generativo basato su **Generative Adversarial Networks (GANs) condizionali**, progettato per sintetizzare volti umani realistici. Il progetto è stato addestrato sul dataset **CelebA** e permette di controllare le caratteristiche visive dell'immagine generata tramite specifici attributi (es. *Uomo/Donna, Sorridente/Non Sorridente, Giovane/Anziano*).
+This repository contains the development of a **Conditional Generative Adversarial Network (cGAN)** designed to synthesize realistic human faces. The model was trained on the **CelebA** dataset and allows users to control the visual characteristics of the generated images through specific attributes (e.g., *Male/Female, Smiling/Not Smiling, Young/Old*).
 
-## 🎯 Obiettivo del Progetto
+## 🎯 Project Objective
 
-L'obiettivo è dimostrare la capacità di controllare l'output di un modello generativo DCGAN-like superando le classiche sfide di addestramento delle GAN (come il *mode collapse* e l'instabilità del gradiente) attraverso architetture avanzate e tecniche di regolarizzazione.
-
----
-
-## 🧠 Architettura del Modello (`model.py`)
-
-Il sistema è composto da due reti neurali in competizione:
-
-1. **Generatore (DCGAN-like):**
-   * Prende in input un vettore di rumore latente ($z \in \mathbb{R}^{128}$) concatenato a un vettore condizionale multi-hot (3 attributi).
-   * Utilizza blocchi di `ConvTranspose2d` e `BatchNorm2d` per effettuare un upsampling progressivo da una mappa spaziale 4x4 fino a un'immagine RGB 64x64.
-   * Attivazione finale `Tanh` per mappare l'output nel range $[-1, 1]$.
-
-2. **Discriminatore (Projection Discriminator):**
-   * A differenza della concatenazione standard, implementa un **Projection Discriminator**. Questa architettura mappa gli attributi condizionali nello stesso spazio delle feature estratte dal backbone convoluzionale, calcolando un prodotto scalare.
-   * *Vantaggio:* Valuta in modo molto più stabile e preciso se l'immagine è reale e se rispetta simultaneamente tutte le condizioni imposte, migliorando la qualità visiva per query multi-attributo.
+The goal of this project is to demonstrate the ability to control the output of a DCGAN-like generative model while overcoming the classic challenges of GAN training (such as *mode collapse* and gradient instability) through advanced architectures and stabilization techniques.
 
 ---
 
-## 🛠️ Tecniche di Stabilizzazione (Training)
+## 🧠 Model Architecture (`model.py`)
 
-L'addestramento di una GAN richiede accorgimenti specifici per evitare che il Discriminatore diventi troppo "forte" rispetto al Generatore. Nel file `train.py` sono state implementate le seguenti best practice:
+The system consists of two neural networks competing against each other:
 
-* **TTUR (Two Time-Scale Update Rule):** Learning rate differenziati ($LR_G = 0.0002$, $LR_D = 0.0001$) per garantire che il Generatore abbia il tempo di apprendere senza essere surclassato immediatamente.
-* **Instance Noise con Decay:** Aggiunta di rumore gaussiano decrescente agli input del discriminatore nelle prime epoche. Questo "offusca" le differenze tra reale e fake iniziali, stabilizzando i gradienti.
-* **Label Smoothing:** I target reali per il discriminatore sono ridotti da $1.0$ a $0.9$, riducendo l'overconfidence e migliorando il flusso dei gradienti verso il Generatore.
-* **Bilanciamento Perfetto delle Classi (`dataset.py`):** Dato che il dataset CelebA è fortemente sbilanciato, è stato implementato un `WeightedRandomSampler` che assegna pesi inversamente proporzionali alla frequenza delle 8 combinazioni possibili dei 3 attributi, garantendo che il modello veda uniformemente tutte le tipologie di volti.
+1. **Generator (DCGAN-like):**
 
----
+   * Takes as input a latent noise vector ($z \in \mathbb{R}^{128}$) concatenated with a multi-hot conditional vector (3 attributes).
+   * Uses `ConvTranspose2d` and `BatchNorm2d` blocks to progressively upsample from a 4×4 spatial feature map to a 64×64 RGB image.
+   * Final `Tanh` activation maps the output to the range $[-1, 1]$.
 
-## 📂 Struttura del Repository
+2. **Discriminator (Projection Discriminator):**
 
-* `model.py` - Definizione delle classi `Generator` e `Discriminator` in PyTorch.
-* `dataset.py` - Logica di preprocessing delle immagini, estrazione attributi e dataloader bilanciato.
-* `train.py` - Pipeline di addestramento con salvataggio automatico di pesi, grafici di loss e griglie di validazione.
-* `inference.py` - Script ottimizzato per caricare i pesi e generare griglie di volti condizionati (es. "Uomo, Anziano, Sorridente").
+   * Instead of using the standard concatenation approach, it implements a **Projection Discriminator**. This architecture projects the conditional attributes into the same feature space as the convolutional backbone and computes a dot product.
+   * *Advantage:* It evaluates much more accurately and stably whether an image is both real and simultaneously satisfies all the specified conditions, improving the visual quality of multi-attribute queries.
 
 ---
 
-## 🚀 Utilizzo (Inferenza)
+## 🛠️ Stabilization Techniques (Training)
 
-Per testare il modello e generare nuove immagini, assicurati di aver scaricato i pesi pre-addestrati e inseriti nella cartella corretta, dopodiché esegui:
+Training a GAN requires specific strategies to prevent the Discriminator from becoming too "strong" compared to the Generator. The following best practices have been implemented in `train.py`:
+
+* **TTUR (Two Time-Scale Update Rule):** Different learning rates ($LR_G = 0.0002$, $LR_D = 0.0001$) ensure that the Generator has enough time to learn without being immediately outperformed.
+* **Instance Noise with Decay:** Gradually decreasing Gaussian noise is added to the Discriminator inputs during the early training epochs. This "blurs" the initial differences between real and fake samples, stabilizing the gradients.
+* **Label Smoothing:** Real targets for the Discriminator are reduced from $1.0$ to $0.9$, decreasing overconfidence and improving gradient flow to the Generator.
+* **Perfect Class Balancing (`dataset.py`):** Since the CelebA dataset is highly imbalanced, a `WeightedRandomSampler` assigns weights inversely proportional to the frequency of the 8 possible combinations of the 3 selected attributes, ensuring that the model is trained uniformly across all face categories.
+
+---
+
+## 📂 Repository Structure
+
+* `model.py` - Definition of the `Generator` and `Discriminator` classes in PyTorch.
+* `dataset.py` - Image preprocessing, attribute extraction, and balanced dataloader implementation.
+* `train.py` - Training pipeline with automatic checkpoint saving, loss visualization, and validation image grids.
+* `inference.py` - Optimized script for loading pretrained weights and generating conditional face grids (e.g., "Male, Old, Smiling").
+
+---
+
+## 🚀 Usage (Inference)
+
+To test the model and generate new images, make sure you have downloaded the pretrained weights and placed them in the appropriate directory, then run:
 
 ```bash
 python inference.py
+```
+
